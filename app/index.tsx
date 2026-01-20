@@ -1,36 +1,37 @@
 import { useEffect, useRef, useState } from "react";
 import { Accelerometer } from "expo-sensors";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-} from "react-native";
+import { View, Text, TouchableOpacity, TextInput, StatusBar, UIManager } from "react-native";
 import dgram from "react-native-udp";
 import { Buffer } from "buffer";
 import { styles } from "./styles";
-import { StatusBar, UIManager } from "react-native";
-import { ReactNativeJoystick } from "@korsolutions/react-native-joystick";
+
+const DISCOVERY_PORT = 9003;
 
 export default function App() {
-  const [serverIp, setServerIp] = useState("192.168.1.8");
+  const [serverIp, setServerIp] = useState("192.168.1.8"); // fallback
   const [portText, setPortText] = useState("9002");
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState("");
 
   const socket = useRef(null);
+  const discoverySocket = useRef(null);
   const accelSub = useRef(null);
+
+  const connectedRef = useRef(false);
+  const lastFoundIp = useRef("");
 
   const lastSentValue = useRef(0);
   const offset = useRef(0);
 
-  const connectedRef = useRef(false);
   useEffect(() => {
     connectedRef.current = connected;
   }, [connected]);
 
-  const isValidIp = (ip) => {
+  useEffect(() => {
+    UIManager.setLayoutAnimationEnabledExperimental?.(true);
+  }, []);
+
+  const isValidIp = (ip: string) => {
     const parts = ip.trim().split(".");
     if (parts.length !== 4) return false;
     return parts.every((p) => {
@@ -44,41 +45,6 @@ export default function App() {
     const p = Number(portText);
     if (!Number.isInteger(p) || p < 1 || p > 65535) return null;
     return p;
-  };
-
-  const sendPacket = (data) => {
-    if (!connectedRef.current || !socket.current) return;
-
-    const port = getPort() ?? 9002;
-    const msg = Buffer.from(JSON.stringify(data));
-    socket.current.send(msg, 0, msg.length, port, serverIp);
-  };
-
-  const startSending = () => {
-    setError("");
-
-    if (!isValidIp(serverIp)) return setError("Invalid IP address");
-    const port = getPort();
-    if (!port) return setError("Invalid port (1-65535)");
-
-    socket.current = dgram.createSocket({ type: "udp4" });
-    socket.current.bind(Math.floor(Math.random() * 1000) + 40000);
-
-    connectedRef.current = true;
-    setConnected(true);
-
-    Accelerometer.setUpdateInterval(5);
-    accelSub.current = Accelerometer.addListener(({ y }) => {
-      let rawY = -y - offset.current;
-      let steer = Math.sign(rawY) * Math.pow(Math.abs(rawY), 0.45);
-      steer = steer * 1.5;
-      steer = Math.max(Math.min(steer, 1), -1);
-
-      if (Math.abs(steer - lastSentValue.current) > 0.001) {
-        lastSentValue.current = steer;
-        sendPacket({ t: "s", v: steer });
-      }
-    });
   };
 
   const stopSending = () => {
@@ -96,22 +62,122 @@ export default function App() {
     setConnected(false);
   };
 
-  useEffect(() => () => stopSending(), []);
+  const startSendingWith = (ip, port) => {
+    setError("");
 
-  useEffect(() => {
-    UIManager.setLayoutAnimationEnabledExperimental?.(true);
-  }, []);
+    if (!isValidIp(ip)) return setError("Invalid IP address");
+    if (!Number.isInteger(port) || port < 1 || port > 65535)
+      return setError("Invalid port (1-65535)");
+
+    // reset previous session
+    stopSending();
+
+    // Create UDP socket
+    socket.current = dgram.createSocket({ type: "udp4" });
+    socket.current.bind(Math.floor(Math.random() * 1000) + 40000);
+
+    connectedRef.current = true;
+    setConnected(true);
+
+    // start accelerometer stream
+    Accelerometer.setUpdateInterval(5);
+    accelSub.current = Accelerometer.addListener(({ y }) => {
+      let rawY = -y - offset.current;
+      let steer = Math.sign(rawY) * Math.pow(Math.abs(rawY), 0.45);
+      steer = steer * 1.5;
+      steer = Math.max(Math.min(steer, 1), -1);
+
+      if (Math.abs(steer - lastSentValue.current) > 0.001) {
+        lastSentValue.current = steer;
+        const msg = Buffer.from(JSON.stringify({ t: "s", v: steer }));
+        socket.current?.send(msg, 0, msg.length, port, ip);
+      }
+    });
+  };
+
+  const startSending = () => {
+    const port = getPort();
+    if (!isValidIp(serverIp)) return setError("Invalid IP address");
+    if (!port) return setError("Invalid port (1-65535)");
+    startSendingWith(serverIp, port);
+  };
+
+  const sendPacket = (data) => {
+    if (!connectedRef.current || !socket.current) return;
+    const port = getPort() ?? 9002;
+    const msg = Buffer.from(JSON.stringify(data));
+    socket.current.send(msg, 0, msg.length, port, serverIp);
+  };
 
   const handleBtn = (btn, action) => {
     sendPacket({ t: "b", v: btn, a: action });
   };
 
-  function handleJoystick(cords) {
-    console.log("hehe")
+  const startDiscovery = () => {
+    if (discoverySocket.current) return;
+
+    const ds = dgram.createSocket({ type: "udp4" });
+
+    ds.bind(DISCOVERY_PORT, () => {
+      try {
+        ds.setBroadcast?.(true);
+      } catch {}
+      console.log("🔎 Discovery listening on", DISCOVERY_PORT);
+    });
+
+    ds.on("message", (msg, rinfo) => {
+      try {
+        const data = JSON.parse(msg.toString());
+        if (data?.app !== "steering") return;
+
+        const ip = rinfo.address;
+        const port = Number(data?.port ?? 9002);
+
+        // avoid spam / loops
+        if (ip === lastFoundIp.current && connectedRef.current) return;
+        lastFoundIp.current = ip;
+
+        console.log("✅ Found PC:", ip, "port:", port);
+        setServerIp(ip);
+        setPortText(String(port));
+
+        // auto-connect only if not already connected
+        if (!connectedRef.current) {
+          // give React state a moment to update
+          setTimeout(() => startSendingWith(ip, port), 50);
+        }
+      } catch {
+        // ignore
+      }
+    });
+
+    ds.on("error", (e) => {
+      console.log("⚠️ Discovery error", e);
+      try { ds.close(); } catch {}
+      discoverySocket.current = null;
+    });
+
+    discoverySocket.current = ds;
+  };
+
+  // Start discovery on app open + cleanup on exit
+  useEffect(() => {
+    startDiscovery();
+    return () => {
+      stopSending();
+      try { discoverySocket.current?.close?.(); } catch {}
+      discoverySocket.current = null;
+    };
+  }, []);
+
+  function handleJoystick(data) {
+    // optional
   }
+
   return (
     <View style={styles.container}>
       <StatusBar hidden />
+
       <TextInput
         style={styles.input}
         placeholder="Enter IP"
@@ -122,6 +188,7 @@ export default function App() {
         autoCapitalize="none"
         autoCorrect={false}
       />
+
       <TextInput
         style={styles.input}
         placeholder="Port"
@@ -131,12 +198,8 @@ export default function App() {
         keyboardType="numeric"
         editable={!connected}
       />
-      
-      <ReactNativeJoystick color="#06b6d4" radius={75} onMove={(data)=> handleJoystick(data)} />
 
-      {!!error && (
-        <Text style={{ color: "red", marginBottom: 8 }}>{error}</Text>
-      )}
+      {!!error && <Text style={{ color: "red", marginBottom: 8 }}>{error}</Text>}
 
       <TouchableOpacity
         style={[
@@ -151,41 +214,17 @@ export default function App() {
       </TouchableOpacity>
 
       <View style={styles.buttonGrid}>
-        <Btn
-          title="A#"
-          color="#4CAF50"
-          onIn={() => handleBtn("A", "p")}
-          onOut={() => handleBtn("A", "r")}
-        />
-        <Btn
-          title="B"
-          color="#F44336"
-          onIn={() => handleBtn("B", "p")}
-          onOut={() => handleBtn("B", "r")}
-        />
-        <Btn
-          title="LT"
-          color="#333"
-          onIn={() => handleBtn("LT", "p")}
-          onOut={() => handleBtn("LT", "r")}
-        />
-        <Btn
-          title="RT"
-          color="#333"
-          onIn={() => handleBtn("RT", "p")}
-          onOut={() => handleBtn("RT", "r")}
-        />
+        <Btn title="A" color="#4CAF50" onIn={() => handleBtn("A", "p")} onOut={() => handleBtn("A", "r")} />
+        <Btn title="B" color="#F44336" onIn={() => handleBtn("B", "p")} onOut={() => handleBtn("B", "r")} />
+        <Btn title="LT" color="#333" onIn={() => handleBtn("LT", "p")} onOut={() => handleBtn("LT", "r")} />
+        <Btn title="RT" color="#333" onIn={() => handleBtn("RT", "p")} onOut={() => handleBtn("RT", "r")} />
       </View>
     </View>
   );
 }
 
 const Btn = ({ title, onIn, onOut, color }) => (
-  <TouchableOpacity
-    onPressIn={onIn}
-    onPressOut={onOut}
-    style={[styles.btn, { backgroundColor: color }]}
-  >
+  <TouchableOpacity onPressIn={onIn} onPressOut={onOut} style={[styles.btn, { backgroundColor: color }]}>
     <Text style={styles.btnText}>{title}</Text>
   </TouchableOpacity>
 );

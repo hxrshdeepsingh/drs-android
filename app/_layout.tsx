@@ -1,13 +1,11 @@
 import { Stack } from "expo-router";
-import "react-native-reanimated";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useKeepAwake } from "expo-keep-awake";
 
 export default function RootLayout() {
+  useKeepAwake();
   return (
-    <GestureHandlerRootView>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
       </Stack>
-    </GestureHandlerRootView>
   );
 }
