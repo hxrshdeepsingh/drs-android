@@ -10,6 +10,8 @@ import {
 import dgram from "react-native-udp";
 import { Buffer } from "buffer";
 import { styles } from "./styles";
+import { StatusBar, UIManager } from "react-native";
+import { ReactNativeJoystick } from "@korsolutions/react-native-joystick";
 
 export default function App() {
   const [serverIp, setServerIp] = useState("192.168.1.8");
@@ -96,12 +98,20 @@ export default function App() {
 
   useEffect(() => () => stopSending(), []);
 
+  useEffect(() => {
+    UIManager.setLayoutAnimationEnabledExperimental?.(true);
+  }, []);
+
   const handleBtn = (btn, action) => {
     sendPacket({ t: "b", v: btn, a: action });
   };
 
+  function handleJoystick(cords) {
+    console.log("hehe")
+  }
   return (
     <View style={styles.container}>
+      <StatusBar hidden />
       <TextInput
         style={styles.input}
         placeholder="Enter IP"
@@ -121,6 +131,8 @@ export default function App() {
         keyboardType="numeric"
         editable={!connected}
       />
+      
+      <ReactNativeJoystick color="#06b6d4" radius={75} onMove={(data)=> handleJoystick(data)} />
 
       {!!error && (
         <Text style={{ color: "red", marginBottom: 8 }}>{error}</Text>
