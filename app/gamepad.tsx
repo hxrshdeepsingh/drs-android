@@ -2,6 +2,7 @@ import { View, TouchableOpacity, Text, StatusBar } from "react-native";
 import { router } from "expo-router";
 import { styles } from "@/src/styles/styles";
 import { sendButton, session } from "@/src/session";
+import { useKeepAwake } from "expo-keep-awake";
 
 const Btn = ({ title, onIn, onOut, color }: any) => (
     <TouchableOpacity onPressIn={onIn} onPressOut={onOut} style={[styles.btn, { backgroundColor: color }]}>
@@ -10,6 +11,7 @@ const Btn = ({ title, onIn, onOut, color }: any) => (
 );
 
 export default function GamepadScreen() {
+    useKeepAwake();
     if (!session.connected) {
         return (
             <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
