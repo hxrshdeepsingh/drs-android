@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "android": "expo run:android"
+    "android": "expo run:android",
+    "build": "powershell -Command \"$env:NODE_ENV='production'; cd android; ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon\""
   },
   "dependencies": {
     "buffer": "^6.0.3",

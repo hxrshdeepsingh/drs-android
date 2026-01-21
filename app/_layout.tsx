@@ -3,9 +3,11 @@ import { useKeepAwake } from "expo-keep-awake";
 
 export default function RootLayout() {
   useKeepAwake();
+
   return (
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-      </Stack>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="gamepad" />
+    </Stack>
   );
 }
