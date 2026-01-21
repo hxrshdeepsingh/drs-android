@@ -49,35 +49,5 @@ export const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 14,
   },
-  title: { color: "#fff", fontWeight: "800", marginBottom: 10, fontSize: 16 },
-  input: {
-    backgroundColor: "#111",
-    color: "#fff",
-    borderWidth: 1,
-    borderColor: "#333",
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  error: { color: "#ff6b6b", marginBottom: 8 },
-
-  connectBtn: { paddingVertical: 12, borderRadius: 12, alignItems: "center" },
-  btnGo: { backgroundColor: "#1b5cff" },
-  btnStop: { backgroundColor: "#444" },
-  connectText: { color: "#fff", fontWeight: "900" },
-
-  buttonGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  btn: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    margin: 15,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  btnText: { color: "#fff", fontWeight: "bold", fontSize: 18 },
+  title: { color: "#fff", fontWeight: "800", marginBottom: 10, fontSize: 16 }
 });
