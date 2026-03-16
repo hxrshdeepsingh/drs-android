@@ -6,7 +6,7 @@
     "start": "expo start",
     "android": "expo run:android",
     "install": "adb install C:\\Users\\ishuc\\Desktop\\projects\\drs\\client\\android\\app\\build\\outputs\\apk\\release\\app-release.apk",
-    "build": "powershell -Command \"$env:NODE_ENV='production'; cd android; ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon\""
+    "build": "powershell -Command \"$env:NODE_ENV='production'; cd android; ./gradlew assembleRelease \""
   },
   "dependencies": {
     "buffer": "^6.0.3",
