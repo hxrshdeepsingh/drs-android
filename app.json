@@ -1,28 +1,31 @@
 {
   "expo": {
-    "name": "drs",
-    "slug": "drs",
-    "version": "1.0.0",
+    "name": "DRSPad",
+    "slug": "drs-pad",
+    "version": "2.0.0",
     "orientation": "landscape",
-    "icon": "./assets/images/icon.png",
-    "scheme": "drs",
+    "icon": "./assets/adaptive-icon.png",
+    "scheme": "drs-pad",
+    "splash": {
+      "image": "./assets/splash-icon-light.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#151718"
+    },
     "newArchEnabled": true,
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundImage": "./assets/images/icon.png",
-        "monochromeImage": "./assets/images/icon.png"
+        "backgroundColor": "#151718",
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/adaptive-icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.hxrshdeep.drs"
+      "package": "com.hxrshdeep.drspad"
     },
     "plugins": [
-      [
-        "expo-router",
-        {}
-      ]
+      "expo-splash-screen",
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true,
